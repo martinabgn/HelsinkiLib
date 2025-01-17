@@ -1,2 +1,2 @@
 # HelsinkiLib
-NLP application project
+Project for the course "Building NLP Applications"
