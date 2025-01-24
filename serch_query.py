@@ -2,7 +2,7 @@ import requests
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
 
-# 从 URL 加载文档
+# Load document from URL
 def fetch_documents(url):
     try:
         response = requests.get(url)
