@@ -1,2 +1,0 @@
-# HelsinkiLib
-NLP application project
