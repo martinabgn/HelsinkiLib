@@ -1,0 +1,2 @@
+Date - Name of team member - Number of hours - task
+30/01 - Martina - 1h - task3 week 1
