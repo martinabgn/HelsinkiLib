@@ -2,36 +2,39 @@ import requests
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
 
-# Load document from URL
+# 从 URL 加载文档
 def fetch_documents(url):
+    """
+    从远程 URL 下载文件内容。
+    """
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Check if the request was successful
+        response.raise_for_status()  # 检查请求是否成功
         content = response.text
-        # Split the content into documents by </article>
+        # 按 </article> 分割为文档
         documents = content.split("</article>")
         return documents
     except requests.RequestException as e:
         print(f"Error fetching documents from URL: {e}")
         return []
 
-# Retrieve documents
+# 获取文档
 url = "https://raw.githubusercontent.com/martinabgn/HelsinkiLib/week2/enwiki-20181001-corpus.1000-articles.txt"
 documents = fetch_documents(url)
 
-# Verify if documents were loaded successfully
+# 检查文档是否成功加载
 if not documents:
     print("No documents to process. Exiting.")
     exit()
 
-# Display document information
+# 输出文档信息
 print(f"Extracted {len(documents)} documents.")
 
-# Create a term-document matrix
-cv = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b") 
+# 2. 创建术语-文档矩阵
+cv = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b")
 sparse_matrix = cv.fit_transform(documents)
 
-# Check if CountVectorizer successfully built the matrix
+# 检查 CountVectorizer 是否成功构建
 if len(cv.get_feature_names_out()) == 0:
     print("No terms were indexed by CountVectorizer. Check your documents.")
     exit()
@@ -41,39 +44,40 @@ print("Shape of sparse_matrix:", sparse_matrix.shape)
 terms = cv.get_feature_names_out()
 t2i = cv.vocabulary_
 
-# Transpose the matrix
+# 转置矩阵
 dense_matrix = sparse_matrix.todense()
 td_matrix = dense_matrix.T
 
+# 布尔查询动态解析
 d = {"and": "&", "AND": "&",
      "or": "|", "OR": "|",
      "not": "1 -", "NOT": "1 -",
      "(": "(", ")": ")"}
 
 def rewrite_token(t):
-    # Check if the token is a Boolean operator
+    # 检查是否为布尔操作符
     if t in d:
         return d[t]
-    # Check if the query word exists in the vocabulary
+    # 检查查询词是否存在于词汇表
     if t in t2i:
         return 'td_matrix[t2i["{:s}"]]'.format(t)
-    # If the word is not in the vocabulary, return a vector of all zeros
+    # 如果词不在词汇表中，返回全 0 向量
     return 'np.zeros(td_matrix.shape[1], dtype=int)'
 
 def rewrite_query(query):
     return " ".join(rewrite_token(t) for t in query.split())
 
-# Search function with pagination and content truncation
+# 搜索功能，支持分页和内容截断
 def search_query(query, top_n=5, truncate_m=50):
     """
-    Search and display search results, support pagination and content truncation.
-    :param query: query entered by the user
-    :param top_n: maximum number of documents to display
-    :param truncate_m: maximum number of words to display per document
+    搜索并显示查询结果，支持分页和内容截断。
+    :param query: 用户输入的查询
+    :param top_n: 显示的最多文档数量
+    :param truncate_m: 每篇文档显示的最大单词数
     """
     try:
-        hits_matrix = eval(rewrite_query(query))  # Execute the query
-        hits_list = list(hits_matrix.nonzero()[1])  # Get the indices of matching documents
+        hits_matrix = eval(rewrite_query(query))  # 执行查询
+        hits_list = list(hits_matrix.nonzero()[1])  # 获取匹配文档索引
         total_hits = len(hits_list)
 
         if total_hits == 0:
@@ -84,9 +88,9 @@ def search_query(query, top_n=5, truncate_m=50):
         print(f"Total matching documents: {total_hits}")
         print(f"Showing top {min(top_n, total_hits)} documents:\n")
 
-        # Iterate through matching documents, display results with pagination and truncation
+        # 遍历匹配文档，分页显示并截断内容
         for i, doc_idx in enumerate(hits_list[:top_n]):
-            truncated_content = " ".join(documents[doc_idx].split()[:truncate_m])  # Truncate document content
+            truncated_content = " ".join(documents[doc_idx].split()[:truncate_m])  # 截断文档内容
             print(f"Matching doc #{i+1} (Index {doc_idx}): {truncated_content}...\n")
 
         if total_hits > top_n:
@@ -94,8 +98,9 @@ def search_query(query, top_n=5, truncate_m=50):
     except Exception as e:
         print(f"Error processing query '{query}': {e}")
 
-
-# Main program loop
-# while True: Part of User Input
-# Example queries
-search_query("example AND nothing", top_n=5, truncate_m=200)
+        # 主程序循环
+while True:
+    user_query = input("Enter your query (type 'quit' to exit): ")
+    if user_query.lower() == "quit":
+        break
+    search_query(user_query, top_n=5, truncate_m=50)

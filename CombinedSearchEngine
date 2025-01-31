@@ -1,0 +1,86 @@
+import requests
+from bs4 import BeautifulSoup
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+
+def fetch_documents(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  
+        content = response.text
+        soup = BeautifulSoup(content, 'html.parser')
+        articles = soup.find_all('article')
+
+        article_dict = {}
+        for article in articles:
+            name = article.get("name")
+            content = article.text.strip()
+            if name:
+                article_dict[name] = content
+
+        return article_dict
+    except requests.RequestException as e:
+        print(f"Error fetching documents from URL: {e}")
+        return {}
+    
+url = "https://raw.githubusercontent.com/martinabgn/HelsinkiLib/week2/enwiki-20181001-corpus.1000-articles.txt"
+article_dict = fetch_documents(url)
+    
+if not article_dict:
+    print("No documents to process. Exiting.")
+    exit()
+
+documents, names = list(article_dict.values()), list(article_dict.keys())
+
+cv = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b")
+sparse_matrix = cv.fit_transform(documents)
+
+terms = cv.get_feature_names_out()
+t2i = cv.vocabulary_
+
+dense_matrix = sparse_matrix.todense()
+td_matrix = dense_matrix.T
+
+d = {"and": "&", "AND": "&",
+     "or": "|", "OR": "|",
+     "not": "1 -", "NOT": "1 -",
+     "(": "(", ")": ")"}
+
+def rewrite_token(t):
+    if t in d:
+        return d[t]
+    if t in t2i:
+        return f'td_matrix[t2i["{t}"]]'
+    return 'np.zeros(td_matrix.shape[1], dtype=int)'  # 未知词返回全 0 向量
+
+def rewrite_query(query):
+    return " ".join(rewrite_token(t) for t in query.split())
+
+def search_query(query, top_n=5, truncate_m=200):
+    try:
+        hits_matrix = eval(rewrite_query(query))  
+        hits_list = list(hits_matrix.nonzero()[1])  
+        total_hits = len(hits_list)
+
+        if total_hits == 0:
+            print("No matching documents found.")
+            return
+
+        print(f"Query: {query}")
+        print(f"Total matching documents: {total_hits}")
+        print(f"Showing top {min(top_n, total_hits)} documents:\n")
+
+        for i, doc_idx in enumerate(hits_list[:top_n]):
+            truncated_content = " ".join(documents[doc_idx].split()[:truncate_m])  # 截断文档内容
+            print(f"Matching doc #{i+1} (Index {doc_idx}): {truncated_content}...\n")
+
+        if total_hits > top_n:
+            print(f"Only showing the top {top_n} results. Refine your query to see more.")
+    except Exception as e:
+        print(f"Error processing query '{query}': {e}")
+
+while True:
+    user_query = input("Enter your query (type 'quit' to exit): ")
+    if user_query.lower() == "quit":
+        break
+    search_query(user_query, top_n=5, truncate_m=50)
