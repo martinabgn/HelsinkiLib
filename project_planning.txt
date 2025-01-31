@@ -1,0 +1,16 @@
+**What is the main idea of your application?**
+
+The main idea is to simplify the search of libraries and services across Helsinki (Espoo and Vantaa).
+
+**What problem does it solve?**
+
+There are a lot of chain libraries that operate in the area. Each has multiple locations, their own cards and services available. We wanted to create a place where you can search for a nearby library which has books on the language you are interested in, or provides services you need (as for example 3D printing, sewing machine or room for group work).
+
+**What data would you like to index?**
+
+1. List of library chains and libraries including websites
+2. Get the locations
+3. Languages available for books
+4. Genres of books
+5. Other services
+6. EXTRA working hours
