@@ -1,3 +1,4 @@
 Date - Name of team member - Number of hours - task
 30/01 - Martina - 1h - task3 week 1
 31/01 - Irina - 1h - task 3 week 3
+31/01 - Martina - 1h - solvng merge issues + formatting git page
