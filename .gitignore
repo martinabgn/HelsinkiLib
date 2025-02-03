@@ -1,3 +1,6 @@
 venv/
+<<<<<<< HEAD
 venv/
 venv/
+=======
+>>>>>>> 40511806 (Removed venv from tracking)
