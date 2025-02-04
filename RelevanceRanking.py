@@ -179,6 +179,60 @@ def search_query(query, top_n=5, truncate_m=200):
     except Exception as e:
         print(f"Error processing query '{query}': {e}")
 
+# ===========================
+# 📌 TF-IDF Search (with a,Stemming, b,Exact Match, d,Wildcard)
+# ===========================
+def search_tfidf(query, top_n=5, truncate_m=200):
+    """Perform TF-IDF search, supporting stemming, exact match, and wildcard search."""
+    try:
+        if "*" in query:
+            wildcard_matches = wildcard_search(query)
+            if not wildcard_matches:
+                print("❌ No matching wildcard terms found.")
+                return
+            query_text = " ".join(wildcard_matches)
+        else:
+            processed_query = preprocess_query(query)
+            print(f"🔵 Processed query: {processed_query}")  # View query after stemming
+            query_text = " ".join(processed_query)
+            print(f"✅ Final query text: {query_text}")  # View the text that is ultimately used to calculate TF-IDF.
+        
+        # Perform TF-IDF calculation on the query
+        query_vector = tfidf_vectorizer.transform([query_text])  
+        # Calculate the similarity between the query and all documents
+        similarities = cosine_similarity(query_vector, tfidf_matrix).flatten()  
+        
+        # Sort by descending similarity
+        ranked_indices = similarities.argsort()[::-1]  
+        # Filter out documents with a similarity of 0
+        ranked_indices = [idx for idx in ranked_indices if similarities[idx] > 0]  
+        
+        # View sorted index
+        print(f"📊 Ranked indices: {ranked_indices}") 
+        # View similarity score
+        print(f"📊 Similarity scores: {similarities[ranked_indices]}")  
+
+        total_hits = len(ranked_indices)
+        if total_hits == 0:
+            print("No matching documents found.")
+            return
+
+        print(f"🔍 Query: {query}")
+        print(f"📄 Total matching documents: {total_hits}")
+        print(f"📌 Showing top {min(top_n, total_hits)} documents:\n")
+
+        for i, doc_idx in enumerate(ranked_indices[:top_n]):
+            truncated_content = " ".join(documents[doc_idx].split()[:truncate_m])
+            print(f"🔹 Matching doc #{i+1} (Index {doc_idx}, Score: {similarities[doc_idx]:.4f}): {names[doc_idx]}")
+            print(f"📄 {truncated_content}...\n")
+
+        if total_hits > top_n:
+            print(f"🔽 Only showing the top {top_n} results. Refine your query to see more.")
+
+    except ValueError as e:
+        print(f"❌ {e}")  
+    except Exception as e:
+        print(f"⚠️ Error processing query '{query}': {e}")
 
 
 # ===========================
