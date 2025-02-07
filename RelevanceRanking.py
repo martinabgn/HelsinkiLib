@@ -14,7 +14,7 @@ import re
 # ===========================
 # 📌 Initialize NLP components
 # ===========================
-nltk.download("punkt")  
+#nltk.download("punkt")  
 stemmer = PorterStemmer()
 
 # ===========================
@@ -58,12 +58,12 @@ documents, names = list(article_dict.values()), list(article_dict.keys())
 # ===========================
 # 📌 Initialize search models
 # ===========================
-# Boolean Search Model
-cv = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b")  
+# Boolean Search Model (supporting bigrams)
+cv = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b", ngram_range=(1,2))  
 sparse_matrix = cv.fit_transform(documents)
 
-# TF-IDF Search Model
-tfidf_vectorizer = TfidfVectorizer(lowercase=True, stop_words="english")
+# TF-IDF Search Model (supporting bigrams, trigram)
+tfidf_vectorizer = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1,3))
 tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
 
 # Semantic Search Model (BERT)
@@ -106,10 +106,10 @@ def stem_query(query):
     words = nltk.word_tokenize(query)
     return " ".join([stemmer.stem(word) for word in words])
 
+
 def preprocess_query(query):
-    """b, Extract exact matches (quoted words) and apply stemming to the rest."""
-    # Extract quoted words
-    exact_matches = re.findall(r'"(.*?)"', query)  
+    """Process query to extract exact matches and apply stemming to remaining words."""
+    exact_matches = re.findall(r'"(.*?)"', query)  # Extract quoted phrases
     remaining_text = re.sub(r'"(.*?)"', "", query).strip()
     remaining_words = remaining_text.split() if remaining_text else [] 
 
@@ -186,7 +186,7 @@ def search_query(query, top_n=5, truncate_m=200):
 # 📌 TF-IDF Search (with a,Stemming, b,Exact Match, d,Wildcard)
 # ===========================
 def search_tfidf(query, top_n=5, truncate_m=200):
-    """Perform TF-IDF search, supporting stemming, exact match, and wildcard search."""
+    """Perform TF-IDF search, supporting stemming, exact match, wildcard, and multi-word phrases."""
     try:
         if "*" in query:
             wildcard_matches = wildcard_search(query)
@@ -198,7 +198,7 @@ def search_tfidf(query, top_n=5, truncate_m=200):
             processed_query = preprocess_query(query)
             # View query after stemming
             print(f"🔵 Processed query: {processed_query}")  
-            query_text = " ".join(processed_query)
+            query_text = " ".join(processed_query)  # Construct query string
             # View the text that is ultimately used to calculate TF-IDF.
             print(f"✅ Final query text: {query_text}")  
         
