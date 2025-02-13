@@ -5,3 +5,4 @@ Date - Name of team member - Number of hours - task
 30/01 - Siyu - 1h - task week 2, Integrate the code and test it.
 6/02 - Martina - 2h - task 2 week 3
 4/02 - Siyu -3h - task1 week 3
+13/02 - Martina - 3h - html + logo
