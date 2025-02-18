@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HelsinkiLib - Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #FFFFFF;
+            text-align: center;
+            color: #7bc284; /* sage green as the logo */
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+        }
+        img {
+            width: 150px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 24px;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            border: 2px solid #7bc284;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #7bc284;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #669a68;
+        }
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin: 20px auto;
+            overflow: visible !important;
+        }
+
+        .search-container input[type="text"] {
+            flex-grow: 1;
+            min-width: 200px; 
+            padding: 10px;
+            border: 2px solid #7bc284;
+            border-radius: 5px 0 0 5px;
+            border-right: none;
+        }
+        .dropdown-wrapper {
+            position: relative;
+        }
+        .radio-group {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 7px;
+        }
+        .radio-group label {
+            margin: 0 10px;
+            cursor: pointer;
+        }
+        .dropdown-wrapper {
+            position: relative;
+            display: inline-block; 
+        }
+        .dropdown-btn {
+            background: white;
+            margin-right: 5px; 
+            border-left: 1px solid #7bc284;
+            cursor: pointer;
+            padding: 10px;
+            font-size: 16px;
+            width: 170px;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%; 
+            left: 0;
+            width: 170px; 
+            background: white;
+            display: none; 
+            flex-direction: column;
+            z-index: 10;
+        }
+        .dropdown-menu button {
+            background: none;
+            border: none;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            width: 100%;
+        }
+        .dropdown-menu button:hover {
+            background-color: #7bc284;
+            color: white;
+        }
+        .search-container button {
+            background-color: #7bc284;
+            color: white;
+            border: none;
+            padding: 11px 15px;
+            cursor: pointer;
+            border-left: 1px solid #7bc284;
+        }
+        .search-container button:hover {
+            background-color: #669a68;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="{{ url_for('static', filename='logohl.png') }}" alt="HelsinkiLib Logo">
+        <h1>Welcome to HelsinkiLib</h1>
+        <p>Find services, events and more in all Helsinki's libraries</p>
+
+        <!-- Search Mode Selection -->
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="search_mode" value="boolean" checked> Boolean
+            </label>
+            <label>
+                <input type="radio" name="search_mode" value="tfidf"> TF-IDF
+            </label>
+            <label>
+                <input type="radio" name="search_mode" value="semantic"> Semantic
+            </label>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search for an event, service, or library...">
+
+            <div class="dropdown-wrapper">
+                <button class="dropdown-btn" id="dropdown-button" onclick="toggleDropdown()">Select Category ▼</button>
+                <div class="dropdown-menu" id="dropdown">
+                    <button onclick="setCategory('events')">Events</button>
+                    <button onclick="setCategory('services')">Library Services</button>
+                    <button onclick="setCategory('libraries')">Libraries</button>
+                </div>
+            </div>
+
+            <button id="search-button" onclick="performSearch()" disabled>Search</button>
+        </div>
+        <p id="error-message" class="error-message">❌ Please choose a category before searching.</p>
+    </div>
+
+    <script>
+        let selectedCategory = ""; 
+        function toggleDropdown() {
+            const dropdown = document.getElementById("dropdown");
+
+            if (dropdown.style.display === "none" || dropdown.style.display === "") {
+                dropdown.style.display = "flex";
+            } else {
+                dropdown.style.display = "none";
+            }
+        }
+
+        function setCategory(category) {
+            selectedCategory = category;  
+            const button = document.getElementById("dropdown-button");
+            button.textContent = {
+                "events": "Events",
+                "services": "Library Services",
+                "libraries": "Libraries"
+            }[category] + " ▼";
+
+            let placeholderText = {
+                "events": "Search for an event...",
+                "services": "Search for library services...",
+                "libraries": "Search for a library..."
+            };
+            document.getElementById("search-input").placeholder = placeholderText[category];
+
+            document.getElementById("search-button").disabled = false;
+            document.getElementById("error-message").style.display = "none";  
+            toggleDropdown();  
+        }
+
+        function performSearch() {
+            const query = document.getElementById("search-input").value;
+            const searchMode = document.querySelector('input[name="search_mode"]:checked').value;
+
+            console.log(`🔍 Searching: query=${query}, mode=${searchMode}, category=${selectedCategory}`);
+
+            if (query.trim() === "") {
+                alert("Please enter a search query.");
+                return;
+            }
+            window.location.href = `/results?query=${encodeURIComponent(query)}&mode=${searchMode}&category=${selectedCategory}`;
+        }
+
+        document.addEventListener("click", function(event) {
+            if (!event.target.closest(".dropdown-wrapper")) {
+                document.getElementById("dropdown").style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
