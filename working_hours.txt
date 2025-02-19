@@ -7,3 +7,4 @@ Date - Name of team member - Number of hours - task
 4/02 - Siyu -3h - task1 week 3
 13/02 - Martina - 3h - html + logo
 13/02 - Siyu - 4h -search engine + test
+18/02 - Siyu - 3h - TASK 21,22: textmining, NER
