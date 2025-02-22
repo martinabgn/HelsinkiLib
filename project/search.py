@@ -61,7 +61,7 @@ def load_library_services(filename="data/library_services_binary.csv"):
 
     return services_list, service_texts, library_names
 
-def load_libraries(filename="data/helmet_library_details_modified.csv"):
+def load_libraries(filename="data/helmet_library_details.csv"):
     """Load library details from a CSV file with automatic encoding detection."""
     df = pd.read_csv(filename, encoding="utf-8-sig")  
     df.columns = df.columns.str.strip().str.lower()  

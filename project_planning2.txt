@@ -1,0 +1,23 @@
+
+The goal of our project is to create an app that helps the user find relevant information about Helsinki's libraries, especially their facilities and events.
+To complete our project, we need to complete the following tasks:
+
+1. Extract the data from the libraries' website (https://helmet.finna.fi) (XL):
+1.1 get the list of the libraries (M);
+1.2 get the list of the events for the next five months (more or less) (M).
+
+2. Create our search engine (XL):
+2.1 implement Boolean search (S);
+2.2 implement relevance ranking and multi-word phrases search (M);
+2.3 implement NER (M).
+
+3. Create our web UI (XL):
+3.1 create a logo (S);
+3.2 html coding (M);
+3.3 create a Flask interface (M).
+
+We have decided to split our work in a way so each of us has a main focus area:
+- Martina: web UI and visualization;
+- Siyu: search engine;
+- Nafise : data mining.
+
