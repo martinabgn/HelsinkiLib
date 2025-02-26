@@ -10,3 +10,4 @@ Date - Name of team member - Number of hours - task
 18/02 - Martina - 30min - writing
 18/02 - Siyu - 3h - TASK 21,22: textmining, NER
 22/02 - Martina - 2h - working on Flask
+26/02 - Martina - 2h - working on Flask
