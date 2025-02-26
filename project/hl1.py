@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-import search  # Import the whole search module
+import search
 
 app = Flask(__name__)
 
@@ -10,10 +10,15 @@ def home():
 @app.route("/results")
 def results():
     query = request.args.get("query", "").strip()
+    category = request.args.get("category", "all")  # Default to "all" if missing
+    mode = request.args.get("mode", "boolean")  # Default to "boolean"
+
     if not query:
         return render_template("results.html", query=query, results=[])
 
-    search_results = search.get_search_results(query)  # Call the function from search.py
+    print(f"🔎 Search Query: {query}, Category: {category}, Mode: {mode}")  # Debugging log
+
+    search_results = search.get_search_results(query, category, mode)
     return render_template("results.html", query=query, results=search_results)
 
 if __name__ == "__main__":
