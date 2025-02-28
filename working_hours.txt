@@ -16,3 +16,4 @@ Date - Name of team member - Number of hours - task
 10/02 - Nafiseh - 4 hours scraping 
 11/02 - Nafiseh - 6 hours scraping
 19/02 Nafiseh  - 2 hours week 4
+27/02 Siyu - 3h - testing
