@@ -18,18 +18,15 @@
             margin: 50px auto;
             padding: 20px;
         }
-        img {
+        img.logo {
             width: 150px;
             margin-bottom: 20px;
         }
         h1 {
             font-size: 24px;
         }
-        .search-bar {
-            margin-bottom: 20px;
-        }
         input[type="text"] {
-            width: 70%;
+            width: 80%;
             padding: 10px;
             border: 2px solid #7bc284;
             border-radius: 5px;
@@ -39,11 +36,90 @@
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
         }
         button:hover {
+            background-color: #669a68;
+        }
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin: 20px auto;
+            overflow: visible !important;
+        }
+        .search-container input[type="text"] {
+            flex-grow: 1;
+            min-width: 200px; 
+            padding: 10px;
+            border: 2px solid #7bc284;
+            border-radius: 5px 0 0 5px;
+            border-right: none;
+        }
+        .dropdown-wrapper {
+            position: relative;
+        }
+        .score-image, .ner-image {
+            width: 100% !important;  
+            max-width: 500px !important; 
+            display: block;
+            margin: 20px auto !important;
+        }
+        .radio-group {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 7px;
+        }
+        .radio-group label {
+            margin: 0 10px;
+            cursor: pointer;
+        }
+        .dropdown-wrapper {
+            position: relative;
+            display: inline-block; /* 让按钮和下拉菜单纵向排列 */
+        }
+        .dropdown-btn {
+            background: white;
+            margin-right: 5px;
+            border-left: 1px solid #7bc284;
+            cursor: pointer;
+            padding: 10px;
+            font-size: 16px;
+            width: 170px;
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 170px;
+            background: white;
+            display: none;
+            flex-direction: column;
+            z-index: 10;
+        }
+        .dropdown-menu button {
+            background: none;
+            border: none;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            width: 100%;
+        }
+        .dropdown-menu button:hover {
+            background-color: #7bc284;
+            color: white;
+        }
+        .search-container button {
+            background-color: #7bc284;
+            color: white;
+            border: none;
+            padding: 11px 15px;
+            cursor: pointer;
+            border-left: 1px solid #7bc284;
+        }
+        .search-container button:hover {
             background-color: #669a68;
         }
         .results {
@@ -74,44 +150,283 @@
             color: #7bc284;
             margin-top: 10px;
         }
+        .back-button {
+            background-color: #ccc;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .back-button:hover {
+            background-color: #aaa;
+        }
     </style>
+</head>
+<body>
+    <div class="container">
+        <img class="logo" src="{{ url_for('static', filename='logohl.png') }}" alt="HelsinkiLib Logo">
+        <h1>Search Results</h1>
+
+        <!-- Search Mode Selection -->
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="search_mode" value="boolean" checked> Boolean
+            </label>
+            <label>
+                <input type="radio" name="search_mode" value="tfidf"> TF-IDF
+            </label>
+            <label>
+                <input type="radio" name="search_mode" value="semantic"> Semantic
+            </label>
+        </div>
+
+        <div class="search-container">
+            <div class="dropdown-wrapper">
+                <button class="dropdown-btn" id="dropdown-button" onclick="toggleDropdown()">Select Category ▼</button>
+                <div class="dropdown-menu" id="dropdown">
+                    <button onclick="setCategory('events')">Events</button>
+                    <button onclick="setCategory('services')">Library Services</button>
+                    <button onclick="setCategory('libraries')">Libraries</button>
+                </div>
+            </div>
+            <input type="text" id="search-input" placeholder="Search for an event, service, or library...">
+            <button id="search-button" onclick="performSearch()" disabled>Search</button>
+        </div>
+        <p id="error-message" class="error-message">❌ Please choose a category before searching.</p>
+        <p class="loading" id="loading">Loading results...</p>
+        <div id="visualization-container">
+            {% if score_plot %}
+                <h3>Relevance Score Distribution</h3>
+                <img class="score-image" src="{{ url_for('static', filename='score_plot.png') }}" alt="Score Distribution">
+            {% endif %}
+        
+            {% if ner_plot %}
+                <h3>Named Entity Recognition Analysis</h3>
+                <img class="ner-image" src="{{ url_for('static', filename='ner_plot.png') }}" alt="NER Analysis">
+            {% endif %}
+        </div>       
+        <div class="results" id="results-container">
+            <!-- Search results will be inserted here dynamically -->     
+        </div>
+
+        <button class="back-button" onclick="goBack()">Back to Home</button>
+    </div>
+
     <script>
-        function search() {
-            const query = document.getElementById("search-input").value;
+        console.log("✅ results.html Page loaded successfully");
+
+        document.addEventListener("DOMContentLoaded", function () {
+            console.log("✅ The DOM is loaded and fetchResults is called.()");
+
             const urlParams = new URLSearchParams(window.location.search);
-            const category = urlParams.get("category");
-            const mode = urlParams.get("mode");
+            const query = urlParams.get("query") || "";
+            const category = urlParams.get("category") || ""; 
+            const mode = urlParams.get("mode") || "boolean";
+
+            console.log(`📡 Fetching Results on Load: query=${query}, category=${category}, mode=${mode}`);
+
+            const searchInput = document.getElementById("search-input");
+            if (searchInput) searchInput.value = query;
+
+            if (category) {
+                selectedCategory = category; 
+                const button = document.getElementById("dropdown-button");
+                button.textContent = {
+                    "events": "Events",
+                    "services": "Library Services",
+                    "libraries": "Libraries"
+                }[category] + " ▼";
+
+                document.getElementById("search-button").disabled = false;
+                document.getElementById("error-message").style.display = "none"; 
+
+                let placeholderText = {
+                    "events": "Search for an event...",
+                    "services": "Search for library services...",
+                    "libraries": "Search for a library..."
+                };
+                document.getElementById("search-input").placeholder = placeholderText[category];
+            }
+
+            const previousMode = document.querySelector(`input[name="search_mode"][value="${mode}"]`);
+            if (previousMode) previousMode.checked = true;
+
+            fetchResults(query, category, mode);
+        });
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById("dropdown");
+
+            if (dropdown.style.display === "none" || dropdown.style.display === "") {
+                dropdown.style.display = "flex";
+            } else {
+                dropdown.style.display = "none";
+            }
+        }
+
+        function setCategory(category) {
+            selectedCategory = category;
+            const button = document.getElementById("dropdown-button");
+            button.textContent = {
+                "events": "Events",
+                "services": "Library Services",
+                "libraries": "Libraries"
+            }[category] + " ▼";
+
+            let placeholderText = {
+                "events": "Search for an event...",
+                "services": "Search for library services...",
+                "libraries": "Search for a library..."
+            };
+            document.getElementById("search-input").placeholder = placeholderText[category];
+
+            document.getElementById("search-button").disabled = false;
+            document.getElementById("error-message").style.display = "none";  
+            toggleDropdown();  
+
+            document.getElementById("dropdown").style.display = "none";
+        }
+
+        function performSearch() {
+            const query = document.getElementById("search-input").value;
+            const searchMode = document.querySelector('input[name="search_mode"]:checked').value;
+
+            if (!selectedCategory) {
+                document.getElementById("error-message").style.display = "block"; 
+                return;
+            }
+
+            console.log(`🔍 Searching: query=${query}, mode=${searchMode}, category=${selectedCategory}`);
 
             if (query.trim() === "") {
                 alert("Please enter a search query.");
                 return;
             }
 
-            window.location.href = `/results?query=${encodeURIComponent(query)}&category=${category}&mode=${mode}`;
+            window.location.href = `/results?query=${encodeURIComponent(query)}&mode=${searchMode}&category=${selectedCategory}`;
+        }
+
+        document.addEventListener("click", function(event) {
+            if (!event.target.closest(".dropdown-wrapper")) {
+                document.getElementById("dropdown").style.display = "none";
+            }
+        });
+        function goBack() {
+            window.location.href = "/";
+        }
+
+        function fetchResults(query, category, mode) {
+            const resultsContainer = document.getElementById("results-container");
+            const visualizationContainer = document.getElementById("visualization-container"); 
+            const loading = document.getElementById("loading");
+
+            if (visualizationContainer) {
+                visualizationContainer.innerHTML = "";  
+            }
+
+            console.log("📊 visualizationContainer: ", visualizationContainer);
+
+            resultsContainer.innerHTML = "";
+            visualizationContainer.innerHTML = "";
+            loading.style.display = "block";
+            console.log(`🟢 Fetching results for: query=${query}, category=${category}, mode=${mode}`);
+
+            fetch(`/search?query=${encodeURIComponent(query)}&category=${category}&mode=${mode}`)
+                .then(response => {
+                    console.log("🔄 Fetch Response Status:", response.status);
+                    if (!response.ok) {
+                        throw new Error(`Server returned status ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loading.style.display = "none";
+                    console.log("🔍 Data returned by the API:", data);
+
+                    if (!data || typeof data !== "object") {
+                        throw new Error("Invalid JSON response");
+                    }
+
+                    resultsContainer.innerHTML = "";
+
+                    if (!Array.isArray(data.results)) {
+                        console.error("❌ `data.results` is not an array, fix it to be an empty array.");
+                        data.results = []; 
+                    }
+
+                    let plotHtml = "";
+                    if (data.score_plot) {
+                        let plotUrl = data.score_plot.startsWith("/static/") ? window.location.origin + data.score_plot : data.score_plot;
+                        plotHtml += `<h3>Relevance Score Distribution</h3>
+                                    <img class="score-image" src="${plotUrl}" alt="Score Distribution">`; 
+                    }
+
+                    if (data.ner_plot) {
+                        plotHtml += `<h3>Named Entity Recognition Analysis</h3>
+                                    <img class="ner-img" src="${data.ner_plot}" alt="NER Analysis">`; 
+                    }
+
+                    visualizationContainer.innerHTML = plotHtml; 
+                    console.log("✅ Updating visualization-container with:", plotHtml);
+
+                    if (data.results.length === 0) {
+                        resultsContainer.innerHTML = "<p>No results found.</p>";
+                        return;
+                    }
+
+                    if (data.error) {
+                        console.error("❌ API Error:", data.error);
+                        resultsContainer.innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+                        return;
+                    }
+
+                    if (data.length === 0) {
+                        resultsContainer.innerHTML = "<p>No results found.</p>";
+                        return;
+                    }
+
+                    data.results.forEach(item => {
+                        const div = document.createElement("div");
+                        div.classList.add("result-item");
+
+                        let content = "";
+                        if (category === "events") {
+                            content = `
+                                <a href="${item.url || "#"}">${item.title || "No Title"}</a>
+                                <p><strong>Location:</strong> ${item.location || "Unknown"}</p>
+                                <p><strong>Date:</strong> ${item.date || "N/A"}</p>
+                                <p>${item.description ? item.description.substring(0, 200) + "..." : "No description available"}</p>
+                                <p><a href="${item.url}" target="_blank">View Event</a></p>
+                            `;
+                        } else if (category === "services") {
+                            content = `
+                                <a href="#">${item.library_name || "Unknown Library"}</a>
+                                <p><strong>Available Services:</strong> ${item.services || "No services listed"}</p>
+                            `;
+                        } else if (category === "libraries") {
+                            content = `
+                                <a href="#">${item.library_name || "Unknown Library"}</a>
+                                <p><strong>Address:</strong> ${item.address && item.address !== "NaN" ? item.address : "N/A"}</p>
+                                <p><strong>Contact Info:</strong> ${item.contact_info && item.contact_info !== "NaN" ? item.contact_info : "N/A"}</p>
+                                <p><strong>Services:</strong> ${item.services && item.services !== "NaN" ? item.services : "No services listed"}</p>
+                            `;
+                        }
+                        console.log("🔍 front end results:", data.results);
+
+                        div.innerHTML = content;
+                        resultsContainer.appendChild(div);
+                    });
+                })
+                .catch(error => {
+                    loading.style.display = "none";
+                    console.error("❌ Fetch error:", error);
+                    resultsContainer.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
+                });
         }
     </script>
-</head>
-<body>
-    <div class="container">
-        <img src="{{ url_for('static', filename='logohl.png') }}" alt="HelsinkiLib Logo">
-        <h1>Search Results</h1>
-        <div class="search-bar">
-            <input type="text" id="search-input" placeholder="Search for a library or a service..." value="{{ query }}">
-            <button onclick="search()">Search</button>
-        </div>
-        <p class="loading" id="loading">Loading results...</p>
-   <div class="results">
-        {% if results %}
-            {% for result in results %}
-                <div class="result-item">
-                    <a href="#">{{ result['name'] }}</a>
-                    <p>{{ result['description'] }}</p>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>No results found.</p>
-        {% endif %}
-    </div>
-    </div>
 </body>
 </html>
+
