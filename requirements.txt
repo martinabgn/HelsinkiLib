@@ -1,0 +1,11 @@
+flask
+seaborn
+spacy
+os
+collections
+pandas
+numpy
+sklearn
+sentence_transformers
+nltk
+re
