@@ -35,7 +35,7 @@ def load_events(filename="data/helmet_all_events_with_translated_descriptions.cs
     df = pd.read_csv(filename, encoding="utf-8")  
     df.columns = df.columns.str.strip().str.lower()  
     # Prepare event descriptions for searching
-    event_texts = df["title"].astype(str) + " " + df["location"].astype(str)
+    event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
     event_names = df["title"].astype(str)
 
     return df.to_dict("records"), event_texts.tolist(), event_names.tolist()  
@@ -453,7 +453,7 @@ def search_boolean(query, category, top_n=20):
                     "title": item.get("title", "N/A"),
                     "location": item.get("location", "N/A"),
                     "date": item.get("date", "N/A"),
-                    "description": item.get("description", "N/A")[:200] + "...",
+                    "description": item.get("description_translated", "N/A")[:200] + "...",
                     "url": item.get("link", "#"),  
                     "image_url": item.get("image url", "#"),  
                     "score": 1.0
@@ -537,7 +537,7 @@ def search_tfidf(query, category, top_n=20):
                     "title": item.get("title", "N/A"),
                     "location": item.get("location", "N/A"),
                     "date": item.get("date", "N/A"),
-                    "description": item.get("description", "N/A")[:200] + "...",
+                    "description": item.get("description_translated", "N/A")[:200] + "...",
                     "url": item.get("link", "#"),  
                     "image_url": item.get("image url", "#"),  
                     "score": similarity_score  
@@ -611,7 +611,7 @@ def search_semantic(query, category, top_n=20):
                     "title": item.get("title", "N/A"),
                     "location": item.get("location", "N/A"),
                     "date": item.get("date", "N/A"),
-                    "description": item.get("description", "N/A")[:200] + "...",
+                    "description": item.get("description_translated", "N/A")[:200] + "...",
                     "url": item.get("link", "#"),  
                     "image_url": item.get("image url", "#"),  
                     "score": float(similarities[idx])
