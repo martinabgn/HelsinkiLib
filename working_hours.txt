@@ -12,3 +12,5 @@ Date - Name of team member - Number of hours - task
 22/02 - Martina - 2h - working on Flask
 26/02 - Martina - 2h - working on Flask
 28/02 - Martina - 1h - testing + updating .md file
+10/02 - Nafiseh - 5 hours scraping 
+11/02 - Nafiseh - 6 hours scraping
