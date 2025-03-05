@@ -24,6 +24,6 @@ for index, row in df.iterrows():
         print(f"Error fetching {address}: {e}")
     time.sleep(1)  # Prevent requests from being sent too quickly and getting restricted
 
-# 保存结果
+# save result
 df.to_csv("libraries_with_coordinates.csv", index=False)
 print("Latitude and longitude retrieval complete, data has been saved to libraries_with_coordinates.csv")
