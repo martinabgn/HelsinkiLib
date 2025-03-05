@@ -1,7 +1,0 @@
-Helmet: helmet.fi
-Helka: helka.fi
-National library: www.kansalliskirjasto.fi
-German library: www.deutsche-bibliothek.org
-Goethe Institut: www.onleihe.de/goethe-institut/ vaati rekisteröinti
-Suomalainen Kirjallisuuden Seura: www.finlit.fi/kirjasto/
-
