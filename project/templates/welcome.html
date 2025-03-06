@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HelsinkiLib - Home</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: #FFFFFF;
             text-align: center;
-            color: #7bc284; /* sage green as the logo */
+            color: #7bc284;
             margin: 0;
             padding: 0;
         }
         .container {
-            max-width: 600px;
-            margin: 50px auto;
+            max-width: 800px;
+            margin: 20px auto;
         }
         img {
             width: 150px;
@@ -42,90 +44,44 @@
             background-color: #669a68;
         }
         .search-container {
-            position: relative;
             display: flex;
+            justify-content: center;
             align-items: center;
-            width: 100%;
-            margin: 20px auto;
-            overflow: visible !important;
-        }
-
-        .search-container input[type="text"] {
-            flex-grow: 1;
-            min-width: 200px; 
-            padding: 10px;
-            border: 2px solid #7bc284;
-            border-radius: 5px 0 0 5px;
-            border-right: none;
-        }
-        .dropdown-wrapper {
-            position: relative;
+            gap: 10px;
+            margin-bottom: 10px;
         }
         .radio-group {
             display: flex;
             justify-content: center;
-            margin-bottom: 7px;
+            margin-bottom: 10px;
         }
         .radio-group label {
             margin: 0 10px;
             cursor: pointer;
         }
-        .dropdown-wrapper {
-            position: relative;
-            display: inline-block; 
-        }
-        .dropdown-btn {
-            background: white;
-            margin-right: 5px; 
-            border-left: 1px solid #7bc284;
-            cursor: pointer;
-            padding: 10px;
-            font-size: 16px;
-            width: 170px;
-        }
-
-        .dropdown-menu {
-            position: absolute;
-            top: 100%; 
-            left: 0;
-            width: 170px; 
-            background: white;
-            display: none; 
-            flex-direction: column;
-            z-index: 10;
-        }
-        .dropdown-menu button {
-            background: none;
-            border: none;
-            padding: 10px;
-            text-align: left;
-            cursor: pointer;
-            width: 100%;
-        }
-        .dropdown-menu button:hover {
-            background-color: #7bc284;
-            color: white;
-        }
-        .search-container button {
-            background-color: #7bc284;
-            color: white;
-            border: none;
-            padding: 11px 15px;
-            cursor: pointer;
-            border-left: 1px solid #7bc284;
-        }
-        .search-container button:hover {
-            background-color: #669a68;
+        #map {
+            height: 500px;
+            width: 90%;
+            margin: auto;
+            border: 2px solid #7bc284;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
+
     <div class="container">
         <img src="{{ url_for('static', filename='logohl.png') }}" alt="HelsinkiLib Logo">
         <h1>Welcome to HelsinkiLib</h1>
-        <p>Find services, events and more in all Helsinki's libraries</p>
+        <p>Find events in Helsinki Libraries, and explore library locations & services.</p>
 
-        <!-- Search Mode Selection -->
+        <!-- 🔍 Search for events -->
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search for an event...">
+            <button id="search-button" onclick="performSearch()">Search</button>
+        </div>
+
+        <!-- 🔘 Search mode -->
         <div class="radio-group">
             <label>
                 <input type="radio" name="search_mode" value="boolean" checked> Boolean
@@ -138,57 +94,101 @@
             </label>
         </div>
 
+        <!-- 🌍 Library Map -->
+        <div id="map"></div>
+
+        <!-- 📑 Filter library services -->
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="Search for an event, service, or library...">
-
-            <div class="dropdown-wrapper">
-                <button class="dropdown-btn" id="dropdown-button" onclick="toggleDropdown()">Select Category ▼</button>
-                <div class="dropdown-menu" id="dropdown">
-                    <button onclick="setCategory('events')">Events</button>
-                    <button onclick="setCategory('services')">Library Services</button>
-                    <button onclick="setCategory('libraries')">Libraries</button>
-                </div>
-            </div>
-
-            <button id="search-button" onclick="performSearch()" disabled>Search</button>
+            <select id="serviceSelect" onchange="filterLibraries()">
+                <option value="">Filter by Service</option>
+            </select>
+            <button onclick="showAllLibraries()">Show All Libraries</button>
         </div>
-        <p id="error-message" class="error-message">❌ Please choose a category before searching.</p>
     </div>
 
     <script>
-        let selectedCategory = ""; 
-        function toggleDropdown() {
-            const dropdown = document.getElementById("dropdown");
+        // **✅ Initialize the map**
+        let map = L.map('map').setView([60.1699, 24.9384], 11);
 
-            if (dropdown.style.display === "none" || dropdown.style.display === "") {
-                dropdown.style.display = "flex";
-            } else {
-                dropdown.style.display = "none";
-            }
+        // **✅ Add map layer**
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let markers = [];
+        let librariesData = [];
+
+        // **📌 Custom droplet Marker**
+        let libraryIcon = L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+        });
+
+        // **📌 Load library data**
+        fetch("/libraries")
+            .then(response => response.json())
+            .then(data => {
+                librariesData = data;
+                populateServiceDropdown(data);
+                loadLibraries(data);
+            });
+
+        // **📌 Display libraries on the map**
+        function loadLibraries(libraries) {
+            markers.forEach(marker => map.removeLayer(marker)); 
+            markers = [];
+
+            libraries.forEach(lib => {
+                if (lib.lat && lib.lng) {
+                    let marker = L.marker([lib.lat, lib.lng], { icon: libraryIcon })
+                        .addTo(map)
+                        .bindPopup(`
+                            <b>${lib.name}</b><br>
+                            📍 ${lib.address}<br>
+                            🏛 Services: ${lib.services ? lib.services.join(", ") : "No services listed"}
+                        `);
+                    markers.push(marker);
+                }
+            });
         }
 
-        function setCategory(category) {
-            selectedCategory = category;  
-            const button = document.getElementById("dropdown-button");
-            button.textContent = {
-                "events": "Events",
-                "services": "Library Services",
-                "libraries": "Libraries"
-            }[category] + " ▼";
+        // **📌 Populate the service dropdown menu**
+        function populateServiceDropdown(data) {
+            let serviceSelect = document.getElementById("serviceSelect");
+            let allServices = new Set();
 
-            let placeholderText = {
-                "events": "Search for an event...",
-                "services": "Search for library services...",
-                "libraries": "Search for a library..."
-            };
-            document.getElementById("search-input").placeholder = placeholderText[category];
+            data.forEach(lib => {
+                if (lib.services) {
+                    lib.services.forEach(service => allServices.add(service));
+                }
+            });
 
-            document.getElementById("search-button").disabled = false;
-            document.getElementById("error-message").style.display = "none";  
-            toggleDropdown();  
+            allServices.forEach(service => {
+                let option = document.createElement("option");
+                option.value = service;
+                option.textContent = service;
+                serviceSelect.appendChild(option);
+            });
+        }
+        // **📌 Filter libraries by service**
+        function filterLibraries() {
+            let selectedService = document.getElementById("serviceSelect").value;
+            let filteredLibraries = librariesData.filter(lib => lib.services && lib.services.includes(selectedService));
+            loadLibraries(filteredLibraries);
+        }
+        // **📌 Show all libraries**
+        function showAllLibraries() {
+            loadLibraries(librariesData);
         }
 
+<<<<<<< HEAD
        function performSearch() {
+=======
+        // **📌 Search for events**
+        function performSearch() {
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
             const query = document.getElementById("search-input").value;
             const searchMode = document.querySelector('input[name="search_mode"]:checked').value;
 
@@ -196,6 +196,7 @@
                 alert("Please enter a search query.");
                 return;
             }
+<<<<<<< HEAD
             if (!selectedCategory) {
                 alert("❌ Please select a category before searching.");
                 return;
@@ -212,6 +213,12 @@
                 document.getElementById("dropdown").style.display = "none";
             }
         });
+=======
+
+            window.location.href = `/results?query=${encodeURIComponent(query)}&mode=${searchMode}&category=events`;
+        }
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
     </script>
+
 </body>
 </html>

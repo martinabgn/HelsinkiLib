@@ -2,9 +2,12 @@
 # 📌 Import necessary modules
 # ===========================
 from flask import Flask, render_template, request, jsonify, url_for
+from transformers import pipeline  # ✅ Zero-Shot Classification
+import json
 import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
+from wordcloud import WordCloud
 import seaborn as sns
 import spacy
 import os
@@ -19,6 +22,8 @@ from nltk.stem import PorterStemmer
 import re
 
 app = Flask(__name__, template_folder="templates")
+# ✅ Zero-Shot Classification Initialization
+classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
 # ===========================
 # 📌 Initialize NLP components
@@ -28,63 +33,64 @@ stemmer = PorterStemmer()
 nlp = spacy.load("en_core_web_sm")
 
 # ===========================
-# 📌 Load dataset from csv
+# 📌 Load Event Data
 # ===========================
 def load_events(filename="data/helmet_all_events_with_translated_descriptions.csv"):
-    """Load event data from a CSV file and format it for search processing."""
     df = pd.read_csv(filename, encoding="utf-8")  
+<<<<<<< HEAD
     df.columns = df.columns.str.strip().str.lower()  
     # Prepare event descriptions for searching
     event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
     event_names = df["title"].astype(str)
+=======
+    df.columns = df.columns.str.strip().str.lower()
+    event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
+    return df.to_dict("records"), event_texts.tolist()
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
 
-    return df.to_dict("records"), event_texts.tolist(), event_names.tolist()  
+# ===========================
+# 📌 Load Library Data (For Map)
+# ===========================
+LIBRARY_FILE = "data/libraries_with_coordinates.csv"  
 
-def load_library_services(filename="data/library_services_binary.csv"):
-    """Load library service data from a CSV file with automatic encoding detection."""
-    df = pd.read_csv(filename, encoding="ISO-8859-1")
-    df.columns = df.columns.str.strip().str.lower()  
-    if "library name" not in df.columns:
-        raise KeyError(f"❌ Missing 'library name' in CSV file, Columns found: {df.columns}")
+def load_libraries(filename=LIBRARY_FILE):
+    """Loading library data and parsing the `services` field"""
+    try:
+        df = pd.read_csv(filename)
 
-    # Extract service names from the dataset
-    service_columns = [col for col in df.columns if col != "library name"]
+        # ✅ 确保 `lat` 和 `lng` 存在，并删除 `NaN`
+        if "lat" not in df.columns or "lng" not in df.columns:
+            raise KeyError("❌ CSV file missing 'lat' or 'lng' columns!")
 
-    services_list = []
-    for _, row in df.iterrows():
-        library = row["library name"]
-        available_services = [service for service in service_columns if str(row[service]).strip().lower() in ["yes", "1", "true"]]
-        services_list.append({"library_name": library, "services": ", ".join(available_services)})
+        df = df.dropna(subset=["lat", "lng"])
+        df["lat"] = df["lat"].astype(float)
+        df["lng"] = df["lng"].astype(float)
 
-    service_texts = [f"{item['library_name']} {' '.join(item['services'].split(','))}" for item in services_list if item["library_name"] != "Library Name"]
-    library_names = [item["library_name"] for item in services_list]
+        # ✅ Parsing `services` to fix formatting errors
+        def parse_services(value):
+            if isinstance(value, str) and value.startswith("[") and value.endswith("]"):
+                try:
+                    return json.loads(value.replace("'", '"'))  # Turning single quotes into double quotes in JSON format
+                except json.JSONDecodeError:
+                    print(f"⚠️ JSON parsing failure: {value}")  # Print faulty values
+                    return []
+            return []  
 
-    return services_list, service_texts, library_names
+        df["services"] = df["services"].apply(parse_services)
+        return df.to_dict(orient="records")
 
-def load_libraries(filename="data/helmet_library_details_modified.csv"):
-    """Load library details from a CSV file with automatic encoding detection."""
-    df = pd.read_csv(filename, encoding="utf-8-sig")  
-    df.columns = df.columns.str.strip().str.lower()  
+    except FileNotFoundError:
+        print("❌ CSV Document not found!")
+        return []
+    except Exception as e:
+        print(f"❌ Failure to parse CSV: {e}")
+        return []
 
-    if "library name" in df.columns:
-        df = df.rename(columns={"library name": "library_name"})
-    else:
-        raise KeyError(f"❌ Missing 'library name' in CSV file. Columns found: {df.columns}")
-
-    if "address" not in df.columns:
-        raise KeyError(f"❌ Missing 'library name' in CSV file. Columns found: {df.columns}")
-
-    library_texts = df["library_name"].astype(str) + " " + df["address"].astype(str)
-    library_names = df["library_name"].astype(str)
-
-    return df.to_dict("records"), library_texts.tolist(), library_names.tolist()
-
-events, event_documents, event_names = load_events()
-library_services, service_documents, service_names = load_library_services()
-libraries, library_documents, library_names = load_libraries()
+# Load data
+events, event_documents = load_events()
+libraries = load_libraries()
 
 print(f"✅ Loaded {len(events)} events.")
-print(f"✅ Loaded {len(library_services)} library services.")
 print(f"✅ Loaded {len(libraries)} libraries.")
 
 # ===========================
@@ -98,72 +104,67 @@ d = {
     "(": "(", ")": ")"
 }
 
-# Boolean Search (CountVectorizer)
 cv_events = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b", ngram_range=(1,2))
-cv_services = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b", ngram_range=(1,2))
-cv_libraries = CountVectorizer(lowercase=True, binary=True, token_pattern=r"(?u)\b\w+\b", ngram_range=(1,2))
-
-print(f"📊 Total number of event_documents: {len(event_documents)}")
-print(f"🟢 Sample event_documents: {event_documents[:5]}")  
-
 cv_events.fit(event_documents)
-cv_services.fit(service_documents)
-cv_libraries.fit(library_documents)
-
 sparse_matrix_events = cv_events.transform(event_documents)
-sparse_matrix_services = cv_services.transform(service_documents)
-sparse_matrix_libraries = cv_libraries.transform(library_documents)
-
 t2i_events = cv_events.vocabulary_
-t2i_services = cv_services.vocabulary_
-t2i_libraries = cv_libraries.vocabulary_
 
-# TF-IDF Vectorizer for keyword-based search
 tfidf_vectorizer_events = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1,3))
-tfidf_vectorizer_services = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1,3))
-tfidf_vectorizer_libraries = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1,3))
-
-print(f"✅ Number of words in t2i_events: {len(t2i_events)}")
-print(f"🟢 Sample words: {list(t2i_events.keys())[:10]}")  
-
 tfidf_matrix_events = tfidf_vectorizer_events.fit_transform(event_documents)
-tfidf_matrix_services = tfidf_vectorizer_services.fit_transform(service_documents)
-tfidf_matrix_libraries = tfidf_vectorizer_libraries.fit_transform(library_documents)
 
-
-# **Semantic Search Model (BERT)**
 semantic_model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
 doc_embeddings_events = semantic_model.encode(event_documents, convert_to_tensor=False)
-doc_embeddings_services = semantic_model.encode(service_documents, convert_to_tensor=False)
-doc_embeddings_libraries = semantic_model.encode(library_documents, convert_to_tensor=False)
-
 # ===========================
 # 📌 Search API
 # ===========================
-def get_search_results(query, category, mode, top_n=20):
+def classify_event(description):
     """
-    Perform search based on the selected mode.
+    Uses Zero-Shot Classification (Hugging Face) to classify event descriptions.
+
+    Parameters:
+        description (str): The event description.
+
+    Returns:
+        str: The predicted category label.
+    """
+    candidate_labels = ["sports", "music", "technology", "art", "education", "business", "health", "science"]
     
+    result = classifier(description, candidate_labels=candidate_labels, multi_label=False)
+    
+    return result["labels"][0]  
+
+def get_search_results(query, mode, top_n=20):
+    """
+    Perform search based on the selected mode and classify event categories.
+
     Parameters:
         query (str): The search query entered by the user.
-        category (str): The category of data to search within ("events", "services", or "libraries").
         mode (str): The search method to use ("boolean", "tfidf", or "semantic").
         top_n (int): The maximum number of results to return.
-    
+
     Returns:
-        list: A list of search results matching the query.
+        list: A list of search results with predicted categories.
     """
     if mode == "boolean":
-        results = search_boolean(query, category, top_n)
+        results = search_boolean(query, top_n)
     elif mode == "tfidf":
-        results = search_tfidf(query, category, top_n)
+        results = search_tfidf(query, top_n)
     elif mode == "semantic":
-        results = search_semantic(query, category, top_n)
+        results = search_semantic(query, top_n)
     else:
         return []  # Return an empty list if an invalid mode is provided
     
-    print(f"🔵 Mode: {mode} | Query: {query} | Category: {category} | Results: {len(results)} items")
-    return results  # Return the search results as a list
+    print(f"🔵 Mode: {mode} | Query: {query} | Results: {len(results) if isinstance(results, list) else 'summary'} items")
+
+    # ✅ Sorting with Zero-Shot
+    for result in results:
+        if "description" in result and result["description"]:  
+            result["category"] = classify_event(result["description"])
+        else:
+            result["category"] = "Unknown"
+
+
+    return results
 
 def safe_json(obj):
     """
@@ -183,11 +184,23 @@ def safe_json(obj):
         return None # Replace NaN with None to avoid JSON errors
     else:
         return obj # Return the object unchanged if no modification is needed
-    
+
 # ===========================
-# 📌 Flask API Routes ： This flask part used for debugging can be deleted after the flask code file is complete.
+# 📌 Flask API Routes
 # ===========================
-    
+@app.route("/libraries", methods=["GET"])
+def get_libraries():
+    """Returns JSON data for all libraries"""
+    try:
+        libraries = load_libraries(LIBRARY_FILE)
+        if not libraries:
+            return jsonify({"error": "Unable to load library data"}), 500
+
+        return jsonify(libraries)
+
+    except Exception as e:
+        return jsonify({"error": f"server error: {str(e)}"}), 500
+
 @app.route("/")
 def home():
     """
@@ -222,40 +235,89 @@ def search():
         JSON: A dictionary containing the search results and optional visualization URLs.
     """
     query = request.args.get("query", "").strip()
-    category = request.args.get("category", "events")
     mode = request.args.get("mode", "boolean")
 
     # Return an error response if no query is provided
     if not query:
         return jsonify({"error": "No query provided"}), 400
+    print(f"🔍 Received search request: {query}, mode: {mode}")  # Debug 
     
     # Retrieve search results
-    search_results = get_search_results(query, category, mode)
+    search_results = get_search_results(query, mode)
 
     # Ensure search_results is always a list (avoid JSON errors)
     if not isinstance(search_results, list):
         search_results = []  
 
     # Variables to store optional visualization URLs
-    score_plot_url = None
-    ner_plot_url = None
+    wordcloud_url = generate_wordcloud(search_results)
+    category_pie_url = generate_category_pie_chart(search_results)
 
-    # Generate a histogram for TF-IDF search results if applicable
-    if mode == "tfidf" and search_results:
-        plot_path = generate_score_distribution_plot([result["score"] for result in search_results if "score" in result])
-        score_plot_url = url_for("static", filename=os.path.basename(plot_path))
-
-    # Generate a Named Entity Recognition (NER) plot for Semantic search results if applicable
-    if mode == "semantic" and search_results:
-        plot_path = generate_ner_plot(search_results)
-        ner_plot_url = url_for("static", filename=os.path.basename(plot_path))
-    
     # Return JSON response containing the search results and visualization links
     return jsonify({
         "results": search_results,
-        "score_plot": score_plot_url or "",
-        "ner_plot": ner_plot_url or ""
+        "wordcloud": wordcloud_url or "",
+        "category_pie": category_pie_url or ""
     })
+
+# ===========================
+# 📌 Visualization Functions
+# ===========================
+def generate_wordcloud(search_results):
+    """
+    Generate a word cloud from the event descriptions.
+
+    Parameters:
+        search_results (list): List of search results containing event descriptions.
+
+    Returns:
+        str: The file path of the saved word cloud image.
+    """
+    if not search_results or not any("description" in result for result in search_results):
+        return None  
+    
+    # Combine all event descriptions
+    text = " ".join([result["description"] for result in search_results if "description" in result])
+
+    # Generate word cloud
+    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)
+
+    # Save the plot
+    plot_path = "static/wordcloud.png"
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis("off")
+    plt.savefig(plot_path, format="png")  
+    plt.close()
+
+    return url_for("static", filename=os.path.basename(plot_path))
+
+def generate_category_pie_chart(search_results):
+    """
+    Generate a pie chart for event categories.
+
+    Parameters:
+        search_results (list): List of search results containing event categories.
+
+    Returns:
+        str: The file path of the saved pie chart image.
+    """
+    if not search_results or not any("category" in result for result in search_results):
+        return None  
+
+    # Count event categories
+    category_counts = Counter([result["category"] for result in search_results if "category" in result])
+
+    # Generate pie chart
+    plt.figure(figsize=(8, 8))
+    plt.pie(category_counts.values(), labels=category_counts.keys(), autopct="%1.1f%%", startangle=140)
+
+    # Save the plot
+    plot_path = "static/category_pie.png"
+    plt.savefig(plot_path, format="png")  
+    plt.close()
+
+    return url_for("static", filename=os.path.basename(plot_path))
 
 
 # ===========================
@@ -333,67 +395,6 @@ def merge_duplicate_events(results):
         event["date"] = ", ".join(event["date"])  
     return list(merged_events.values())  
 
-def generate_score_distribution_plot(scores):
-    """
-    Generate a histogram of search result relevance scores using Seaborn.
-    
-    Parameters:
-        scores (list): A list of numerical relevance scores.
-    
-    Returns:
-        str: The file path of the saved plot image.
-    """
-    if not scores:
-        return None  # Avoid crashing if scores list is empty
-    plt.figure(figsize=(7, 5))
-    sns.histplot(scores, bins=10, kde=True, color="blue", edgecolor="black") # Plot histogram
-    
-    plt.xlabel("Relevance Score")
-    plt.ylabel("Frequency")
-    plt.title("Distribution of Search Relevance Scores")
-    
-    plot_path = "static/score_plot.png"
-    plt.savefig(plot_path, format="png")  
-    plt.close()
-    print("📊 Final Scores for Histogram:", scores)
-    
-    return plot_path  
-
-
-def generate_ner_plot(search_results):
-    """
-    Perform Named Entity Recognition (NER) on search results and generate a bar chart.
-    
-    Parameters:
-        search_results (list): List of search results containing text descriptions.
-    
-    Returns:
-        str: The file path of the saved NER plot image.
-    """
-    # Ensure there are results with descriptions before proceeding
-    if not search_results or not any("description" in result for result in search_results):
-        return None  
-    # Concatenate all descriptions into a single text string
-    text = " ".join([result["description"] for result in search_results if "description" in result])
-    doc = nlp(text)
-
-    # Count occurrences of each entity type
-    entity_labels = [ent.label_ for ent in doc.ents]
-    entity_counts = Counter(entity_labels)
-    # Create a bar plot for entity distribution
-    plt.figure(figsize=(8, 5))
-    sns.barplot(x=list(entity_counts.keys()), y=list(entity_counts.values()), palette="viridis")
-    
-    plt.xlabel("Entity Type")
-    plt.ylabel("Count")
-    plt.title("Named Entity Recognition Analysis")
-    
-    plot_path = "static/ner_plot.png" 
-    plt.savefig(plot_path, format="png")  
-    plt.close()
-
-    return plot_path  
-
 # ===========================
 # 📌 Boolean Search
 # ===========================
@@ -401,26 +402,16 @@ class NOTError(Exception):
     """Exception raised when NOT operation affects all documents."""
     pass
 
-def search_boolean(query, category, top_n=20):
+def search_boolean(query, top_n=20):
     """Perform Boolean search in Flask API (JSON Response)."""
     try:
-        if category == "events":
-            t2i = t2i_events
-            td_matrix = sparse_matrix_events.T.todense()
-            data_source = events
-        elif category == "services":
-            t2i = t2i_services
-            td_matrix = sparse_matrix_services.T.todense()
-            data_source = library_services
-        elif category == "libraries":
-            t2i = t2i_libraries
-            td_matrix = sparse_matrix_libraries.T.todense()
-            data_source = libraries
-        else:
-            return [] 
-        
+        t2i = t2i_events
+        td_matrix = sparse_matrix_events.T.todense()
+        data_source = events
+
         print(f"🟢 Available words in t2i_events: {list(t2i_events.keys())[:10]}")
         print(f"📊 Shape of td_matrix: {td_matrix.shape}")
+
 
         if not any(op in query.upper() for op in ["AND", "OR", "NOT"]) and len(query.split()) > 1:
             return []
@@ -448,6 +439,7 @@ def search_boolean(query, category, top_n=20):
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
+<<<<<<< HEAD
             if category == "events":
                 results.append({
                     "title": item.get("title", "N/A"),
@@ -478,42 +470,45 @@ def search_boolean(query, category, top_n=20):
             results = merge_duplicate_events(results)
             print(f"🟢 After merge: {len(results)} results")
 
+=======
+            results.append({
+                "title": item.get("title", "N/A"),
+                "location": item.get("location", "N/A"),
+                "date": item.get("date", "N/A"),
+                "description": item.get("description_translated", "N/A")[:200] + "...",
+                "url": item.get("link", "#"),
+                "image_url": item.get("image url", "#"),
+                "score": 1.0
+            })
+        print(f"🟢 Before merge: {len(results)} results")
+        results = merge_duplicate_events(results)
+        print(f"🟢 After merge: {len(results)} results")
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
         return clean_results(results)  
+    
     except Exception as e:
-        return [] 
+        print(f"❌ Error: {e}")
+        return []
 # ===========================
 # 📌 TF-IDF Search (with a,Stemming, b,Exact Match, d,Wildcard)
 # ===========================
-def search_tfidf(query, category, top_n=20):
+def search_tfidf(query, top_n=20):
     """Perform TF-IDF search, supporting stemming, exact match, wildcard, and multi-word phrases for a specific category."""
     try:
-
-        if category == "events":
-            tfidf_vectorizer = tfidf_vectorizer_events
-            tfidf_matrix = tfidf_matrix_events
-            data_source = events
-        elif category == "services":
-            tfidf_vectorizer = tfidf_vectorizer_services
-            tfidf_matrix = tfidf_matrix_services
-            data_source = library_services
-        elif category == "libraries":
-            tfidf_vectorizer = tfidf_vectorizer_libraries
-            tfidf_matrix = tfidf_matrix_libraries
-            data_source = libraries
-        else:
-            raise ValueError("❌ Invalid category! Please choose 'events', 'services', or 'libraries'.")
-
+        tfidf_vectorizer = tfidf_vectorizer_events
+        tfidf_matrix = tfidf_matrix_events
+        data_source = events
 
         if "*" in query:
-            wildcard_matches = wildcard_search(query, t2i_libraries if category == "libraries" else t2i_events if category == "events" else t2i_services)
+            wildcard_matches = wildcard_search(query, t2i_events)
             if not wildcard_matches:
                 raise ValueError("❌ No matching wildcard terms found.")
             query_text = " ".join(wildcard_matches)
         else:
             processed_query = preprocess_query(query)
-            print(f"🔵 Processed query ({category}): {processed_query}")  # Debug
+            print(f"🔵 Processed query {processed_query}")  # Debug
             query_text = " ".join(processed_query)
-            print(f"✅ Final query text ({category}): {query_text}")  # Debug
+            print(f"✅ Final query text {query_text}")  # Debug
 
 
         query_vector = tfidf_vectorizer.transform([query_text])
@@ -524,13 +519,14 @@ def search_tfidf(query, category, top_n=20):
         ranked_indices = [idx for idx in ranked_indices if similarities[idx] > 0]
         hits = ranked_indices[:top_n]  
 
-        print(f"📊 Ranked indices ({category}): {ranked_indices}")  # Debug
-        print(f"📊 Similarity scores ({category}): {[similarities[idx] for idx in ranked_indices]}")  # Debug
+        print(f"📊 Ranked indices {ranked_indices}")  # Debug
+        print(f"📊 Similarity scores  {[similarities[idx] for idx in ranked_indices]}")  # Debug
 
 
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
+<<<<<<< HEAD
             similarity_score = float(similarities[idx])  
             if category == "events":
                 results.append({
@@ -561,51 +557,48 @@ def search_tfidf(query, category, top_n=20):
         if category == "events":
             results = merge_duplicate_events(results)
 
+=======
+            similarity_score = float(similarities[idx])
+            results.append({
+                "title": item.get("title", "N/A"),
+                "location": item.get("location", "N/A"),
+                "date": item.get("date", "N/A"),
+                "description": item.get("description_translated", "N/A")[:200] + "...",
+                "url": item.get("link", "#"),
+                "image_url": item.get("image url", "#"),
+                "score": similarity_score
+            })
+            
+        results = merge_duplicate_events(results)
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
         return clean_results(results)  
 
-    except ValueError as e:
-        print(f"⚠️ ValueError: {e}")
     except Exception as e:
-        print(f"❌ Error processing TF-IDF query '{query}' for {category}: {e}")
-
-    return []  
+        print(f"❌ Error processing TF-IDF query '{query}' for events: {e}")
+        return []
 # ===========================
 # 📌 Semantic Search (BERT)
 # ===========================
-def search_semantic(query, category, top_n=20):
+def search_semantic(query, top_n=20):
     """Perform semantic search using BERT embeddings for a specific category."""
     try:
-
-        if category == "events":
-            doc_embeddings = doc_embeddings_events
-            data_source = events
-        elif category == "services":
-            doc_embeddings = doc_embeddings_services
-            data_source = library_services
-        elif category == "libraries":
-            doc_embeddings = doc_embeddings_libraries
-            data_source = libraries
-        else:
-            raise ValueError("❌ Invalid category! Please choose 'events', 'services', or 'libraries'.")
-
+        doc_embeddings = doc_embeddings_events
+        data_source = events
         
         query_embedding = semantic_model.encode([query], convert_to_tensor=False)
-
-
         similarities = cosine_similarity(query_embedding, doc_embeddings).flatten()
-
 
         ranked_indices = similarities.argsort()[::-1][:top_n]
         ranked_indices = [idx for idx in ranked_indices if similarities[idx] > 0]
         hits = ranked_indices[:top_n]  
 
-        print(f"📊 Ranked indices ({category}): {ranked_indices}")  # Debug
-        print(f"📊 Similarity scores ({category}): {[similarities[idx] for idx in ranked_indices]}")  # Debug
-
+        print(f"📊 Ranked indices {ranked_indices}")  # Debug
+        print(f"📊 Similarity scores {[similarities[idx] for idx in ranked_indices]}")  # Debug
 
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
+<<<<<<< HEAD
             if category == "events":
                 results.append({
                     "title": item.get("title", "N/A"),
@@ -634,16 +627,23 @@ def search_semantic(query, category, top_n=20):
 
         if category == "events":
             results = merge_duplicate_events(results)
+=======
+            results.append({
+                "title": item.get("title", "N/A"),
+                "location": item.get("location", "N/A"),
+                "date": item.get("date", "N/A"),
+                "description": item.get("description_translated", "N/A")[:200] + "...",
+                "url": item.get("link", "#"),
+                "image_url": item.get("image url", "#"),
+                "score": float(similarities[idx])
+            })
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
 
+        results = merge_duplicate_events(results)
         return clean_results(results)  
-
-    except ValueError as e:
-        print(f"⚠️ ValueError: {e}")
     except Exception as e:
-        print(f"❌ Error processing Semantic query '{query}' for {category}: {e}")
-
-    return jsonify(results)  
-
+        print(f"❌ Error processing Semantic query '{query}' for events: {e}")
+        return []
 
 # ===========================
 # 📌 Run Flask Server

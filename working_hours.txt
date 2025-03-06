@@ -6,10 +6,13 @@ Date - Name of team member - Number of hours - task
 30/01 - Nafiseh - 2 week 2, binary search 
 6/02 - Martina - 2h - task 2 week 3
 4/02 - Siyu -3h - task1 week 3
+10/02 - Nafiseh - 4 hours scraping 
+11/02 - Nafiseh - 6 hours scraping
 13/02 - Martina - 3h - html + logo
 13/02 - Siyu - 4h -search engine + test
 18/02 - Martina - 30min - writing
 18/02 - Siyu - 3h - TASK 21,22: textmining, NER
+<<<<<<< HEAD
 22/02 - Martina - 2h - working on Flask
 26/02 - Martina - 2h - working on Flask
 28/02 - Martina - 1h - testing + updating .md file
@@ -17,3 +20,12 @@ Date - Name of team member - Number of hours - task
 11/02 - Nafiseh - 6 hours scraping
 19/02 Nafiseh  - 2 hours week 4
 27/02 Siyu - 3h - testing
+=======
+19/02 Nafiseh  - 2 hours week 4
+22/02 - Martina - 2h - working on Flask
+26/02 - Martina - 2h - working on Flask
+27/02 - Siyu - 3h - testing
+28/02 - Martina - 1h - testing + updating .md file
+03/03 - Martina - 2h - working on Flask (visualization)
+06/03 - Martina - 1h - testing
+>>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
