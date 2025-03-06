@@ -1,9 +1,21 @@
 Date - Name of team member - Number of hours - task
 30/01 - Martina - 1h - task3 week 1
 31/01 - Irina - 1h - task 3 week 3
-31/01 - Martina - 1h - solvng merge issues + formatting git page
+31/01 - Martina - 1h - solving merge issues + formatting git page
 30/01 - Siyu - 1h - task week 2, Integrate the code and test it.
+30/01 - Nafiseh - 2 week 2, binary search 
 6/02 - Martina - 2h - task 2 week 3
 4/02 - Siyu -3h - task1 week 3
+10/02 - Nafiseh - 4 hours scraping 
+11/02 - Nafiseh - 6 hours scraping
 13/02 - Martina - 3h - html + logo
 13/02 - Siyu - 4h -search engine + test
+18/02 - Martina - 30min - writing
+18/02 - Siyu - 3h - TASK 21,22: textmining, NER
+19/02 Nafiseh  - 2 hours week 4
+22/02 - Martina - 2h - working on Flask
+26/02 - Martina - 2h - working on Flask
+27/02 - Siyu - 3h - testing
+28/02 - Martina - 1h - testing + updating .md file
+03/03 - Martina - 2h - working on Flask (visualization)
+06/03 - Martina - 1h - testing
