@@ -19,3 +19,5 @@ Date - Name of team member - Number of hours - task
 28/02 - Martina - 1h - testing + updating .md file
 03/03 - Martina - 2h - working on Flask (visualization)
 06/03 - Martina - 1h - testing
+04/03 - Siyu - 3h - wordcloud, pie chart visualization
+05/03 - Siyu - 3h - map visualization 
