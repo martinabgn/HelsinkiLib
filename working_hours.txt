@@ -31,3 +31,4 @@ Date - Name of team member - Number of hours - task
 05/03 - Siyu - 3h - map visualization 
 06/03 - Nafise - 1h -testing
 07/03 - Martina - 2h - fixing format and merge issues, testing
+07/03 - Siyu - 1h - fix issues, testing
