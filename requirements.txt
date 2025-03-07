@@ -1,16 +1,5 @@
 flask
 seaborn
-<<<<<<< HEAD
-spacy
-os
-collections
-pandas
-numpy
-sklearn
-sentence_transformers
-nltk
-re
-=======
 matplotlib
 spacy
 pandas
@@ -18,4 +7,3 @@ numpy
 scikit-learn
 sentence-transformers
 nltk
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
