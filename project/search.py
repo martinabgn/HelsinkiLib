@@ -36,17 +36,14 @@ nlp = spacy.load("en_core_web_sm")
 # 📌 Load Event Data
 # ===========================
 def load_events(filename="data/helmet_all_events_with_translated_descriptions.csv"):
-    df = pd.read_csv(filename, encoding="utf-8")  
-<<<<<<< HEAD
+    df = pd.read_csv(filename, encoding="utf-8")
     df.columns = df.columns.str.strip().str.lower()  
     # Prepare event descriptions for searching
     event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
     event_names = df["title"].astype(str)
-=======
     df.columns = df.columns.str.strip().str.lower()
     event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
     return df.to_dict("records"), event_texts.tolist()
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
 
 # ===========================
 # 📌 Load Library Data (For Map)
@@ -439,7 +436,6 @@ def search_boolean(query, top_n=20):
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
-<<<<<<< HEAD
             if category == "events":
                 results.append({
                     "title": item.get("title", "N/A"),
@@ -470,7 +466,6 @@ def search_boolean(query, top_n=20):
             results = merge_duplicate_events(results)
             print(f"🟢 After merge: {len(results)} results")
 
-=======
             results.append({
                 "title": item.get("title", "N/A"),
                 "location": item.get("location", "N/A"),
@@ -483,7 +478,6 @@ def search_boolean(query, top_n=20):
         print(f"🟢 Before merge: {len(results)} results")
         results = merge_duplicate_events(results)
         print(f"🟢 After merge: {len(results)} results")
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
         return clean_results(results)  
     
     except Exception as e:
@@ -526,7 +520,7 @@ def search_tfidf(query, top_n=20):
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
-<<<<<<< HEAD
+
             similarity_score = float(similarities[idx])  
             if category == "events":
                 results.append({
@@ -557,7 +551,6 @@ def search_tfidf(query, top_n=20):
         if category == "events":
             results = merge_duplicate_events(results)
 
-=======
             similarity_score = float(similarities[idx])
             results.append({
                 "title": item.get("title", "N/A"),
@@ -570,7 +563,6 @@ def search_tfidf(query, top_n=20):
             })
             
         results = merge_duplicate_events(results)
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
         return clean_results(results)  
 
     except Exception as e:
@@ -597,8 +589,6 @@ def search_semantic(query, top_n=20):
 
         results = []
         for idx in hits[:top_n]:
-            item = data_source[idx]
-<<<<<<< HEAD
             if category == "events":
                 results.append({
                     "title": item.get("title", "N/A"),
@@ -627,7 +617,6 @@ def search_semantic(query, top_n=20):
 
         if category == "events":
             results = merge_duplicate_events(results)
-=======
             results.append({
                 "title": item.get("title", "N/A"),
                 "location": item.get("location", "N/A"),
@@ -637,7 +626,6 @@ def search_semantic(query, top_n=20):
                 "image_url": item.get("image url", "#"),
                 "score": float(similarities[idx])
             })
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
 
         results = merge_duplicate_events(results)
         return clean_results(results)  
