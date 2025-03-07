@@ -30,12 +30,8 @@ pip3 install -r requirements.txt
 
 ## Start searching!
 ```bash
-<<<<<<< HEAD
-export FLASK_APP=hl1.py
-=======
 cd project
 export FLASK_APP=search.py
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
 export FLASK_DEBUG=True
 export FLASK_RUN_PORT=8800
 flask run
