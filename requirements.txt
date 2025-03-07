@@ -1,10 +1,12 @@
-flask
-seaborn
+Flask
+transformers
 matplotlib
+wordcloud
+seaborn
 spacy
 pandas
 numpy
 scikit-learn
 sentence-transformers
 nltk
-wordcloud
+geopy
