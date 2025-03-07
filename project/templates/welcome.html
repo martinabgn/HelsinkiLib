@@ -183,12 +183,8 @@
             loadLibraries(librariesData);
         }
 
-<<<<<<< HEAD
-       function performSearch() {
-=======
         // **📌 Search for events**
         function performSearch() {
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
             const query = document.getElementById("search-input").value;
             const searchMode = document.querySelector('input[name="search_mode"]:checked').value;
 
@@ -196,28 +192,9 @@
                 alert("Please enter a search query.");
                 return;
             }
-<<<<<<< HEAD
-            if (!selectedCategory) {
-                alert("❌ Please select a category before searching.");
-                return;
-            }
-
-            console.log(`🔍 Searching: query=${query}, mode=${searchMode}, category=${selectedCategory}`);
-
-            window.location.href = `/results?query=${encodeURIComponent(query)}&mode=${searchMode}&category=${selectedCategory}`;
-        }
-
-
-        document.addEventListener("click", function(event) {
-            if (!event.target.closest(".dropdown-wrapper")) {
-                document.getElementById("dropdown").style.display = "none";
-            }
-        });
-=======
 
             window.location.href = `/results?query=${encodeURIComponent(query)}&mode=${searchMode}&category=events`;
         }
->>>>>>> 581f1ad355c818b95eabd8b6cb80bde7736df61c
     </script>
 
 </body>

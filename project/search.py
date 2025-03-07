@@ -5,10 +5,9 @@ from flask import Flask, render_template, request, jsonify, url_for
 from transformers import pipeline  # ✅ Zero-Shot Classification
 import json
 import matplotlib
-matplotlib.use('Agg') 
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
-import seaborn as sns
 import spacy
 import os
 from collections import Counter
@@ -17,13 +16,11 @@ import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
-import nltk
 from nltk.stem import PorterStemmer
 import re
 
 app = Flask(__name__, template_folder="templates")
-# ✅ Zero-Shot Classification Initialization
-classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+classifier = None
 
 # ===========================
 # 📌 Initialize NLP components
@@ -40,10 +37,7 @@ def load_events(filename="data/helmet_all_events_with_translated_descriptions.cs
     df.columns = df.columns.str.strip().str.lower()  
     # Prepare event descriptions for searching
     event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
-    event_names = df["title"].astype(str)
-    df.columns = df.columns.str.strip().str.lower()
-    event_texts = df["title"].astype(str) + " " + df["location"].astype(str) + " " + df["description_translated"].astype(str)
-    return df.to_dict("records"), event_texts.tolist()
+    return df.to_dict("records"), event_texts
 
 # ===========================
 # 📌 Load Library Data (For Map)
@@ -55,7 +49,6 @@ def load_libraries(filename=LIBRARY_FILE):
     try:
         df = pd.read_csv(filename)
 
-        # ✅ 确保 `lat` 和 `lng` 存在，并删除 `NaN`
         if "lat" not in df.columns or "lng" not in df.columns:
             raise KeyError("❌ CSV file missing 'lat' or 'lng' columns!")
 
@@ -115,20 +108,15 @@ doc_embeddings_events = semantic_model.encode(event_documents, convert_to_tensor
 # 📌 Search API
 # ===========================
 def classify_event(description):
-    """
-    Uses Zero-Shot Classification (Hugging Face) to classify event descriptions.
+    global classifier
+    # ✅ Zero-Shot Classification Initialization
+    if classifier is None:
+        classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
-    Parameters:
-        description (str): The event description.
-
-    Returns:
-        str: The predicted category label.
-    """
     candidate_labels = ["sports", "music", "technology", "art", "education", "business", "health", "science"]
-    
     result = classifier(description, candidate_labels=candidate_labels, multi_label=False)
     
-    return result["labels"][0]  
+    return result["labels"][0]
 
 def get_search_results(query, mode, top_n=20):
     """
@@ -436,36 +424,6 @@ def search_boolean(query, top_n=20):
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
-            if category == "events":
-                results.append({
-                    "title": item.get("title", "N/A"),
-                    "location": item.get("location", "N/A"),
-                    "date": item.get("date", "N/A"),
-                    "description": item.get("description_translated", "N/A")[:200] + "...",
-                    "url": item.get("link", "#"),  
-                    "image_url": item.get("image url", "#"),  
-                    "score": 1.0
-                })
-            elif category == "services":
-                results.append({
-                    "library_name": item.get("library_name", "N/A"),
-                    "services": item.get("services", "N/A"),
-                    "score": 1.0
-                })
-            elif category == "libraries":
-                results.append({
-                    "library_name": item.get("library_name", "N/A"),
-                    "address": item.get("address", "N/A"),
-                    "contact_info": item.get("contact info", "N/A"),  
-                    "services": " | ".join(str(item.get("services", "N/A")).split()),
-                    "score": 1.0
-                })
-
-        if category == "events":
-            print(f"🟢 Before merge: {len(results)} results")
-            results = merge_duplicate_events(results)
-            print(f"🟢 After merge: {len(results)} results")
-
             results.append({
                 "title": item.get("title", "N/A"),
                 "location": item.get("location", "N/A"),
@@ -520,37 +478,6 @@ def search_tfidf(query, top_n=20):
         results = []
         for idx in hits[:top_n]:
             item = data_source[idx]
-
-            similarity_score = float(similarities[idx])  
-            if category == "events":
-                results.append({
-                    "title": item.get("title", "N/A"),
-                    "location": item.get("location", "N/A"),
-                    "date": item.get("date", "N/A"),
-                    "description": item.get("description_translated", "N/A")[:200] + "...",
-                    "url": item.get("link", "#"),  
-                    "image_url": item.get("image url", "#"),  
-                    "score": similarity_score  
-                })
-            elif category == "services":
-                results.append({
-                    "library_name": item.get("library_name", "N/A"),
-                    "services": item.get("services", "N/A"),
-                    "score": similarity_score  
-                })
-            elif category == "libraries":
-                results.append({
-                    "library_name": item.get("library_name", "N/A"),
-                    "address": item.get("address", "N/A"),
-                    "contact_info": item.get("contact info", "N/A"),  
-                    "services": " | ".join(str(item.get("services", "N/A")).split()),
-                    "score": similarity_score  
-                })
-
-
-        if category == "events":
-            results = merge_duplicate_events(results)
-
             similarity_score = float(similarities[idx])
             results.append({
                 "title": item.get("title", "N/A"),
@@ -589,34 +516,7 @@ def search_semantic(query, top_n=20):
 
         results = []
         for idx in hits[:top_n]:
-            if category == "events":
-                results.append({
-                    "title": item.get("title", "N/A"),
-                    "location": item.get("location", "N/A"),
-                    "date": item.get("date", "N/A"),
-                    "description": item.get("description_translated", "N/A")[:200] + "...",
-                    "url": item.get("link", "#"),  
-                    "image_url": item.get("image url", "#"),  
-                    "score": float(similarities[idx])
-                })
-            elif category == "services":
-                results.append({
-                    "library_name": item.get("library_name", "N/A"),
-                    "services": item.get("services", "N/A"),
-                    "score": float(similarities[idx]) 
-                })
-            elif category == "libraries":
-                results.append({
-                    "library_name": item.get("library_name", "N/A"),
-                    "address": item.get("address", "N/A"),
-                    "contact_info": item.get("contact info", "N/A"),  
-                    "services": " | ".join(str(item.get("services", "N/A")).split()),
-                    "score": float(similarities[idx])
-                })
-
-
-        if category == "events":
-            results = merge_duplicate_events(results)
+            item = data_source[idx]
             results.append({
                 "title": item.get("title", "N/A"),
                 "location": item.get("location", "N/A"),
